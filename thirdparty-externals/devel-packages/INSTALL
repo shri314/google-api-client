@@ -1,0 +1,58 @@
+#!/bin/bash
+
+SCRIPT_DIR=$(CDPATH= cd "$(dirname "$BASH_SOURCE")" && pwd);
+
+source "$SCRIPT_DIR/../../.env"
+
+CDPATH=
+cd $SCRIPT_DIR
+
+(
+   set -e
+
+   PACKAGE=boost_1_63_0
+
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      wget http://downloads.sourceforge.net/project/boost/boost/1.63.0/boost_1_63_0.tar.bz2
+      rm -rf ${PACKAGE}
+      tar xjf ${PACKAGE}.tar.bz2
+
+      (
+         set -e
+         cd ${PACKAGE}
+         ./bootstrap.sh --prefix="$DEV_PREFIX/${PACKAGE}"
+         ./b2 --without-python
+         ./b2 --without-python install
+
+      ) || exit 1
+
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1
+
+(
+   set -e
+
+   PACKAGE=cmake-3.8.0-rc1
+
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      wget --no-check-certificate https://cmake.org/files/v3.8/cmake-3.8.0-rc1.tar.gz
+      rm -rf ${PACKAGE}
+      tar xzf ${PACKAGE}.tar.gz
+
+      (
+         set -e
+         cd ${PACKAGE}
+         ./configure --prefix="$DEV_PREFIX/${PACKAGE}"
+         make -j10
+         make install
+
+      ) || exit 1
+
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1

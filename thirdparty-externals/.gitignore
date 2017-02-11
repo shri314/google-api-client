@@ -1,0 +1,6 @@
+tools/*.bz2
+tools/*.gz
+devel-packages/*.bz2
+devel-packages/.*.done
+devel-packages/boost_*
+local

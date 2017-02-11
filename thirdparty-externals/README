@@ -1,0 +1,5 @@
+Required: g++ that supports C++14, sufficiently new C++ Boost
+
+WARN: Use yum or equivalent to install gcc, boost
+
+Use the INSTALL script only if you wish to install these from source

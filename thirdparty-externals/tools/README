@@ -1,0 +1,3 @@
+WARN: Use yum or equivalent to install gcc
+
+Use INSTALL script to install gcc and its dependencies from source into thirdparty-externals/local/ path

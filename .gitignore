@@ -1,0 +1,4 @@
+build
+*.sw*
+thirdparty-externals/tools/GCC
+thirdparty-externals/tools/gcc-stage

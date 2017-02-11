@@ -1,0 +1,3 @@
+WARN: Use yum or equivalent to install boost
+
+Use INSTALL script to install boost from source into thirdparty-externals/local/ path
