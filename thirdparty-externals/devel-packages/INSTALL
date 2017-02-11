@@ -47,7 +47,30 @@ cd $SCRIPT_DIR
          set -e
          cd ${PACKAGE}
          ./configure --prefix="$DEV_PREFIX/${PACKAGE}"
-         make -j10
+         make -j4
+         make install
+
+      ) || exit 1
+
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1
+
+(
+   set -e
+
+   PACKAGE=cpprestsdk
+
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      [ ! -d cpprestsdk ] && git clone https://github.com/Microsoft/cpprestsdk
+
+      (
+         set -e
+         cd ${PACKAGE}/Release
+         cmake -DBUILD_SHARED_LIBS=OFF -DBoost_INCLUDE_DIR=$DEV_PREFIX/boost_1_63_0/include -DCMAKE_INSTALL_PREFIX=$DEV_PREFIX .
+         make -j4
          make install
 
       ) || exit 1
