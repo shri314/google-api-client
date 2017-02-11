@@ -43,18 +43,8 @@ static const utility::string_t s_live_secret(U(""));
 //
 static void open_browser(utility::string_t auth_uri)
 {
-#if defined(_WIN32) && !defined(__cplusplus_winrt)
-    // NOTE: Windows desktop only.
-    auto r = ShellExecuteA(NULL, "open", conversions::utf16_to_utf8(auth_uri).c_str(), NULL, NULL, SW_SHOWNORMAL);
-#elif defined(__APPLE__)
-    // NOTE: OS X only.
-    string_t browser_cmd(U("open \"") + auth_uri + U("\""));
-    system(browser_cmd.c_str());
-#else
-    // NOTE: Linux/X11 only.
     string_t browser_cmd(U("xdg-open \"") + auth_uri + U("\""));
     system(browser_cmd.c_str());
-#endif
 }
 
 //
@@ -86,7 +76,7 @@ public:
                     }
                     catch (const oauth2_exception& e)
                     {
-                        ucout << "Error: " << e.what() << std::endl;
+                        std::cout << "Error: " << e.what() << "\n";
                         m_tce.set(false);
                     }
                 });
@@ -146,7 +136,7 @@ public:
     {
         if (is_enabled())
         {
-            ucout << "Running " << m_name.c_str() << " session..." << std::endl;
+            std::cout << "Running " << m_name.c_str() << " session..." << "\n";
 
             if (!m_oauth2_config.token().is_valid_access_token())
             {
@@ -156,7 +146,7 @@ public:
                 }
                 else
                 {
-                    ucout << "Authorization failed for " << m_name.c_str() << "." << std::endl;
+                    std::cout << "Authorization failed for " << m_name.c_str() << "." << "\n";
                 }
             }
 
@@ -164,7 +154,7 @@ public:
         }
         else
         {
-            ucout << "Skipped " << m_name.c_str() << " session sample because app key or secret is empty. Please see instructions." << std::endl;
+            std::cout << "Skipped " << m_name.c_str() << " session sample because app key or secret is empty. Please see instructions." << "\n";
         }
     }
 
@@ -189,8 +179,8 @@ private:
     void open_browser_auth()
     {
         auto auth_uri(m_oauth2_config.build_authorization_uri(true));
-        ucout << "Opening browser in URI:" << std::endl;
-        ucout << auth_uri << std::endl;
+        std::cout << "Opening browser in URI:" << "\n";
+        std::cout << auth_uri << "\n";
         open_browser(auth_uri);
     }
 
@@ -219,8 +209,8 @@ protected:
     void run_internal() override
     {
         http_client api(U("https://api.dropbox.com/1/"), m_http_config);
-        ucout << "Requesting account information:" << std::endl;
-        ucout << "Information: " << api.request(methods::GET, U("account/info")).get().extract_json().get() << std::endl;
+        std::cout << "Requesting account information:" << "\n";
+        std::cout << "Information: " << api.request(methods::GET, U("account/info")).get().extract_json().get() << "\n";
     }
 };
 
@@ -250,8 +240,8 @@ protected:
     void run_internal() override
     {
         http_client api(U("https://api.linkedin.com/v1/people/"), m_http_config);
-        ucout << "Requesting account information:" << std::endl;
-        ucout << "Information: " << api.request(methods::GET, U("~?format=json")).get().extract_json().get() << std::endl;
+        std::cout << "Requesting account information:" << "\n";
+        std::cout << "Information: " << api.request(methods::GET, U("~?format=json")).get().extract_json().get() << "\n";
     }
 
 };
@@ -278,19 +268,15 @@ protected:
     void run_internal() override
     {
         http_client api(U("https://apis.live.net/v5.0/"), m_http_config);
-        ucout << "Requesting account information:" << std::endl;
-        ucout << api.request(methods::GET, U("me")).get().extract_json().get() << std::endl;
+        std::cout << "Requesting account information:" << "\n";
+        std::cout << api.request(methods::GET, U("me")).get().extract_json().get() << "\n";
     }
 };
 
 
-#ifdef _WIN32
-int wmain(int argc, wchar_t *argv[])
-#else
-int main(int argc, char *argv[])
-#endif
+int main(int argc, char *argv[]) try
 {
-    ucout << "Running OAuth 2.0 client sample..." << std::endl;
+    std::cout << "Running OAuth 2.0 client sample..." << "\n";
 
     linkedin_session_sample linkedin;
     dropbox_session_sample  dropbox;
@@ -300,6 +286,10 @@ int main(int argc, char *argv[])
     dropbox.run();
     live.run();
 
-    ucout << "Done." << std::endl;
+    std::cout << "Done." << "\n";
     return 0;
+}
+catch(const std::exception& e)
+{
+   std::cout << "ERROR: " << e.what() << "\n";
 }

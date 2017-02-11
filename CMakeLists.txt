@@ -7,7 +7,7 @@ add_compile_options("-Wall")
 add_compile_options("-Werror")
 add_compile_options("-fmax-errors=3")
 add_compile_options("-g3")
-add_compile_options("-O3")
+#add_compile_options("-O3")
 add_compile_options("-flto")
 
 include_directories("include")
