@@ -14,8 +14,10 @@ include_directories("include")
 
 set(myclient_LIBS
       boost_system
-      boost_thread
+      cpprest
       pthread
+      ssl
+      crypto
    )
 
 set(myclient_SOURCES

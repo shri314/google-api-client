@@ -1,1 +1,4 @@
 .*.done
+*.bz2
+cmake-*
+boost*
