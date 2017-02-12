@@ -29,8 +29,8 @@ using namespace web::http::experimental::listener;
 //
 // Set key & secret pair to enable session for that service.
 //
-static const utility::string_t s_dropbox_key(U(""));
-static const utility::string_t s_dropbox_secret(U(""));
+static const utility::string_t s_dropbox_key(U("199281123173-s69303ojtuegf7n5pf178kil33c53v1i.apps.googleusercontent.com"));
+static const utility::string_t s_dropbox_secret(U("oFQK3ELzm64e-D5BdecUL-j_"));
 
 static const utility::string_t s_linkedin_key(U(""));
 static const utility::string_t s_linkedin_secret(U(""));
@@ -195,11 +195,11 @@ class dropbox_session_sample : public oauth2_session_sample
 {
 public:
     dropbox_session_sample() :
-        oauth2_session_sample(U("Dropbox"),
+        oauth2_session_sample(U("YouTube"),
             s_dropbox_key,
             s_dropbox_secret,
-            U("https://www.dropbox.com/1/oauth2/authorize"),
-            U("https://api.dropbox.com/1/oauth2/token"),
+            U("https://accounts.google.com/o/oauth2/auth"),
+            U("https://accounts.google.com/o/oauth2/token"),
             U("http://localhost:8889/"))
     {
         // Dropbox uses "default" OAuth 2.0 settings.
@@ -208,7 +208,7 @@ public:
 protected:
     void run_internal() override
     {
-        http_client api(U("https://api.dropbox.com/1/"), m_http_config);
+        http_client api(U("https://accounts.google.com/o/oauth2/auth?"), m_http_config);
         std::cout << "Requesting account information:" << "\n";
         std::cout << "Information: " << api.request(methods::GET, U("account/info")).get().extract_json().get() << "\n";
     }
@@ -278,13 +278,13 @@ int main(int argc, char *argv[]) try
 {
     std::cout << "Running OAuth 2.0 client sample..." << "\n";
 
-    linkedin_session_sample linkedin;
+//    linkedin_session_sample linkedin;
     dropbox_session_sample  dropbox;
-    live_session_sample     live;
+//    live_session_sample     live;
 
-    linkedin.run();
+//    linkedin.run();
     dropbox.run();
-    live.run();
+//    live.run();
 
     std::cout << "Done." << "\n";
     return 0;
