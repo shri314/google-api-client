@@ -1,77 +1,171 @@
 #!/bin/bash
 
-SCRIPT_DIR=$(CDPATH= cd "$(dirname "$BASH_SOURCE")" && pwd);
-
 set -e
+
+SCRIPT_DIR=$(CDPATH= cd "$(dirname "$BASH_SOURCE")" && pwd);
 
 source "$SCRIPT_DIR/../../.env"
 
+CDPATH=
+cd $SCRIPT_DIR
+
 [ -z "${DEV_PREFIX}" ] && echo "DEV_PREFIX is undefined" && exit 1
 
-[ ! -d "${DEV_PREFIX}" ] && mkdir -p "${DEV_PREFIX}"
+mkdir -p "${DEV_PREFIX}"
 
-sudo bash -s <<EEOM
+if [ ! -f /etc/ld.so.conf.d/shri314-myclient.conf ]
+then
+   sudo bash -s <<EEOM
 echo "${DEV_PREFIX}" > /etc/ld.so.conf.d/shri314-myclient.conf
 EEOM
+fi
 
 (
-   set -e
-   rm -f gmp-6.1.2.tar.bz2
-   wget http://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2
-   tar xjf gmp-6.1.2.tar.bz2
-   cd gmp-6.1.2
-   ./configure --prefix=$DEV_PREFIX/gcc-deps/
-   make -j10
-   make install
-)
+   PACKAGE=gmp-6.1.2
 
-sudo ldconfig
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      rm -f ${PACKAGE}.tar.bz2 &&
+         wget http://ftp.gnu.org/gnu/gmp/${PACKAGE}.tar.bz2 &&
+         tar xjf ${PACKAGE}.tar.bz2 &&
+         (
+         cd ${PACKAGE} &&
+            ./configure --prefix=$DEV_PREFIX/gcc6-deps/ &&
+            make -j4 &&
+            make install &&
+            sudo ldconfig
 
-(
-   set -e
-   rm -f mpfr-3.1.5.tar.bz2
-   wget http://ftp.gnu.org/gnu/mpfr/mpfr-3.1.5.tar.bz2
-   tar xjf mpfr-3.1.5.tar.bz2
+      ) || exit 1
 
-   cd mpfr-3.1.5
-   ./configure --prefix=$DEV_PREFIX/gcc-deps/ --with-gmp=$DEV_PREFIX/gcc-deps/
-   make -j10
-   make install
-)
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
 
-sudo ldconfig
+) || exit 1
+
+hash -r
 
 (
-   set -e
-   rm -f mpc-1.0.3.tar.gz
-   wget http://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz
-   tar xzf mpc-1.0.3.tar.gz
+   PACKAGE=mpfr-3.1.5
 
-   cd mpc-1.0.3
-   ./configure --prefix=$DEV_PREFIX/gcc-deps/ --with-gmp=$DEV_PREFIX/gcc-deps/ --with-mpfr=$DEV_PREFIX/gcc-deps/
-   make -j10
-   make install
-)
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      rm -f ${PACKAGE}.tar.bz2 &&
+         wget http://ftp.gnu.org/gnu/mpfr/${PACKAGE}.tar.bz2 &&
+         tar xjf ${PACKAGE}.tar.bz2 &&
+         (
+         cd ${PACKAGE} &&
+            ./configure --prefix=$DEV_PREFIX/gcc6-deps/ --with-gmp=$DEV_PREFIX/gcc6-deps/ &&
+            make -j4 &&
+            make install &&
+            sudo ldconfig
 
-sudo ldconfig
+      ) || exit 1
+
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1
+
+hash -r
 
 (
-   set -e
-   rm -f gcc-6.3.0.tar.bz2
-   wget http://ftp.gnu.org/gnu/gcc/gcc-6.3.0/gcc-6.3.0.tar.bz2
-   tar xjf gcc-6.3.0.tar.bz2
+   PACKAGE=mpc-1.0.3
 
-   rm -rf gcc-stage
-   mkdir gcc-stage
-   cd ./gcc-stage/
-   ../gcc-6.3.0/configure --prefix=$DEV_PREFIX/gcc6 --with-gmp=$DEV_PREFIX/gcc-deps/ --with-mpfr=$DEV_PREFIX/gcc-deps/ --with-mpc=$DEV_PREFIX/gcc-deps/ \
-       --enable-languages=c,c++ \
-       --disable-bootstrap \
-       --disable-multilib
-   make -j10
-   make install
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      rm -f ${PACKAGE}.tar.gz &&
+         wget http://ftp.gnu.org/gnu/mpc/${PACKAGE}.tar.gz &&
+         tar xzf ${PACKAGE}.tar.gz &&
+         (
+         cd ${PACKAGE} &&
+            ./configure --prefix=$DEV_PREFIX/gcc6-deps/ --with-gmp=$DEV_PREFIX/gcc6-deps/ --with-mpfr=$DEV_PREFIX/gcc6-deps/ &&
+            make -j4 &&
+            make install &&
+            sudo ldconfig
 
-   ( cd "$DEV_PREFIX" && rm -f gcc && ln -s gcc6 gcc )
-)
+      ) || exit 1
 
-sudo ldconfig
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1
+
+hash -r
+
+(
+   PACKAGE=gcc-6.3.0
+
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      rm -f ${PACKAGE}.tar.bz2 &&
+         wget http://ftp.gnu.org/gnu/gcc/${PACKAGE}/${PACKAGE}.tar.bz2 &&
+         tar xjf ${PACKAGE}.tar.bz2 &&
+         rm -rf gcc6-stage &&
+         mkdir gcc6-stage &&
+         (
+         set -e
+         cd ./gcc6-stage/ &&
+            ../${PACKAGE}/configure --prefix=$DEV_PREFIX/gcc6 --with-gmp=$DEV_PREFIX/gcc6-deps/ --with-mpfr=$DEV_PREFIX/gcc6-deps/ --with-mpc=$DEV_PREFIX/gcc6-deps/ \
+            --enable-languages=c,c++ \
+            --disable-bootstrap \
+            --disable-multilib &&
+            make -j4 &&
+            make install &&
+            sudo ldconfig
+
+      ) || exit 1
+
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1
+
+hash -r
+
+(
+   PACKAGE=cmake-3.8.0-rc1
+
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      rm -f ${PACKAGE}.tar.gz &&
+         wget --no-check-certificate https://cmake.org/files/v3.8/${PACKAGE}.tar.gz &&
+         tar xzf ${PACKAGE}.tar.gz &&
+         (
+         cd ${PACKAGE} &&
+            ./configure --prefix="$DEV_PREFIX/${PACKAGE}" &&
+            make -j4 &&
+            make install &&
+            sudo ldconfig
+
+      ) || exit 1
+
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1
+
+hash -r
+
+(
+   PACKAGE=gdb-7.12.1
+
+   if [ ! -f $DEV_PREFIX/.${PACKAGE}.done ]
+   then
+      rm -f ${PACKAGE}.tar.xz &&
+         wget http://ftp.gnu.org/gnu/gdb/${PACKAGE}.tar.xz &&
+         tar xJf ${PACKAGE}.tar.xz &&
+         rm -rf gdb-stage &&
+         mkdir gdb-stage &&
+         (
+         cd ./gdb-stage/ &&
+            ../${PACKAGE}/configure --prefix="$DEV_PREFIX/gdb7" &&
+            make -j4 &&
+            make install &&
+            sudo ldconfig
+
+      ) || exit 1
+
+      touch $DEV_PREFIX/.${PACKAGE}.done
+   fi
+
+) || exit 1
