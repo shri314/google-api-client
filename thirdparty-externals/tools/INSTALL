@@ -158,7 +158,7 @@ hash -r
          mkdir gdb-stage &&
          (
          cd ./gdb-stage/ &&
-            ../${PACKAGE}/configure --prefix="$DEV_PREFIX/gdb7" &&
+            ../${PACKAGE}/configure --prefix="$DEV_PREFIX/gdb7" --enable-tui --enable-gdbtk --enable-gdbserver &&
             make -j4 &&
             make install &&
             sudo ldconfig
