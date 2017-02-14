@@ -1,14 +1,8 @@
 cmake_minimum_required (VERSION 3.5)
 project (shri314-myclient)
-enable_testing()
 
-add_compile_options("-std=c++1z")
-add_compile_options("-Wall")
-add_compile_options("-Werror")
-add_compile_options("-fmax-errors=3")
-add_compile_options("-g3")
-#add_compile_options("-O3")
-add_compile_options("-flto")
+SET(CMAKE_BUILD_TYPE "custom")
+SET(CMAKE_CXX_FLAGS_CUSTOM "-std=c++1z -Wall -Werror -fmax-errors=3 -g3 -flto")
 
 include_directories("include")
 
@@ -27,4 +21,5 @@ set(myclient_SOURCES
 add_executable        (myclient ${myclient_SOURCES})
 target_link_libraries (myclient ${myclient_LIBS}   )
 
+enable_testing()
 add_subdirectory      (test EXCLUDE_FROM_ALL)
