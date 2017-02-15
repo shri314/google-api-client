@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "cpprest/http_client.h"
 #include "cpprest/http_listener.h"
 
@@ -95,8 +97,7 @@ public:
    {
       if (is_enabled())
       {
-         std::cout << "Running " << m_name.c_str() << " session..."
-                   << "\n";
+         std::cout << "Running " << m_name.c_str() << " session...\n";
 
          if (!m_oauth2_config.token().is_valid_access_token())
          {
@@ -106,8 +107,7 @@ public:
             }
             else
             {
-               std::cout << "Authorization failed for " << m_name.c_str() << "."
-                         << "\n";
+               std::cout << "Authorization failed for " << m_name.c_str() << ".\n";
             }
          }
 
@@ -115,8 +115,7 @@ public:
       }
       else
       {
-         std::cout << "Skipped " << m_name.c_str() << " session sample because app key or secret is empty. Please see instructions."
-                   << "\n";
+         std::cout << "Skipped " << m_name.c_str() << " session sample because app key or secret is empty. Please see instructions.\n";
       }
    }
 
@@ -137,8 +136,7 @@ private:
    void open_browser_auth()
    {
       auto auth_uri(m_oauth2_config.build_authorization_uri(true));
-      std::cout << "Opening browser in URI:"
-                << "\n";
+      std::cout << "Opening browser in URI:\n";
       std::cout << auth_uri << "\n";
       open_browser(auth_uri);
    }
@@ -165,8 +163,7 @@ protected:
    {
       http_client api(U("https://www.googleapis.com/youtube/v3/playlistItems?part=id&playlistId=HL"), m_http_config);
 
-      std::cout << "Requesting account information:"
-                << "\n";
+      std::cout << "Requesting account information:\n";
 
       std::cout << "Information: " << api.request(methods::GET, U("account/info")).get().extract_json().get() << "\n";
    }
@@ -174,14 +171,74 @@ protected:
 
 int main(int argc, char* argv[]) try
 {
-   std::cout << "Running OAuth 2.0 client sample..."
-             << "\n";
+   std::cout << "Running OAuth 2.0 client sample...\n";
 
-   youtube_session_sample youtube;
-   youtube.run();
+   //   youtube_session_sample youtube;
+   //   youtube.run();
 
-   std::cout << "Done."
-             << "\n";
+   std::cout << "Done.\n";
+
+   utility::string_t listen_uri     = U("http://localhost:8888/");
+   utility::string_t name           = U("YouTube");
+   utility::string_t client_key     = s_youtube_key;
+   utility::string_t client_secret  = s_youtube_secret;
+   utility::string_t auth_endpoint  = U("https://accounts.google.com/o/oauth2/auth");
+   utility::string_t token_endpoint = U("https://accounts.google.com/o/oauth2/token");
+   utility::string_t redirect_uri   = listen_uri + "save_code";
+   utility::string_t scope          = U("https://www.googleapis.com/auth/youtube");
+
+   http_listener L(listen_uri);
+   L.support(
+       [=](http::http_request request) -> void {
+          if (request.request_uri().path() == "/home")
+          {
+             oauth2_config cfg{client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope};
+
+             auto x = cfg.build_authorization_uri(true);
+
+             request.reply(status_codes::OK, U(R"(
+                           <html>
+                           <body>
+                              Welcome! <br>
+                              <a href=")" + x + R"(">get_code</a>
+                           </body>
+                           </html>)"),
+                           U("text/html; charset=utf-8"));
+          }
+          if (request.request_uri().path() == "/load_code")
+          {
+             utility::string_t  code;
+             std::ifstream      file("code.txt", std::ios::binary);
+             std::ostringstream oss;
+             oss << file.rdbuf();
+             oss.str();
+             request.reply(status_codes::OK, U("old code = " + oss.str() + "\n"));
+          }
+          if (request.request_uri().path() == "/save_code")
+          {
+             if (request.request_uri().query() != U(""))
+             {
+                auto&& code = request.request_uri().query();
+
+                {
+                   std::ofstream file("code.txt", std::ios::binary);
+                   file << code;
+                }
+                request.reply(status_codes::OK, U("code saved"));
+             }
+          }
+          else
+          {
+             std::cout << "not found.\n";
+             request.reply(status_codes::NotFound, U("not found."));
+          }
+       });
+
+   auto&& f = L.open();
+
+   f.wait();
+
+   open_browser(listen_uri + "home");
 
    return 0;
 }
