@@ -176,22 +176,23 @@ int main(int argc, char* argv[]) try
    std::condition_variable cv;
    bool quit = false;
 
-   utility::string_t listen_uri     = U("http://localhost:8888/");
-   utility::string_t name           = U("YouTube");
-   utility::string_t client_key     = s_youtube_key;
-   utility::string_t client_secret  = s_youtube_secret;
-   utility::string_t auth_endpoint  = U("https://accounts.google.com/o/oauth2/auth");
-   utility::string_t token_endpoint = U("https://accounts.google.com/o/oauth2/token");
-   utility::string_t redirect_uri   = listen_uri + "save_code";
-   utility::string_t scope          = U("https://www.googleapis.com/auth/youtube");
-
-   oauth2_config cfg{client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope};
+   utility::string_t listen_uri = U("http://localhost:8888/");
 
    http_listener L(listen_uri);
+
    L.support(
-      [&quit, &m, &cfg, &cv](http::http_request request) -> void {
+      [&quit, &m, &listen_uri, &cv](http::http_request request) -> void {
          if (request.request_uri().path() == "/")
          {
+            utility::string_t client_key     = s_youtube_key;
+            utility::string_t client_secret  = s_youtube_secret;
+            utility::string_t auth_endpoint  = U("https://accounts.google.com/o/oauth2/auth");
+            utility::string_t token_endpoint = U("https://accounts.google.com/o/oauth2/token");
+            utility::string_t redirect_uri   = listen_uri + "save_code";
+            utility::string_t scope          = U("https://www.googleapis.com/auth/youtube");
+
+            oauth2_config cfg{client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope};
+
             auto x = cfg.build_authorization_uri(true);
 
             request.reply(status_codes::OK, U(R"(
@@ -227,6 +228,7 @@ int main(int argc, char* argv[]) try
             std::ofstream file("code.txt", std::ios::binary);
             file << code;
 
+            // FIXME - get access_token code
             request.reply(status_codes::OK, U("code saved"));
          }
          else
@@ -238,9 +240,7 @@ int main(int argc, char* argv[]) try
 
    std::cout << "running HTTP server at uri - " << listen_uri << "\n";
 
-   auto&& f = L.open();
-
-   f.get();
+   L.open().wait();
 
    std::unique_lock<std::mutex> lk(m);
    cv.wait(lk, [&quit] { return quit; });
