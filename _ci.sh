@@ -48,8 +48,10 @@ do
    fi
 
    echo --------------------------------------------
-   ./build/myclient
+   (
+      cd ./build && ./myclient
+      rm -f core.*
+   )
    echo --------------------------------------------
-   rm -f core.*
    sleep 3;
 done

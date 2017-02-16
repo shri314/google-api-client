@@ -34,8 +34,8 @@ class oauth2_code_listener
 {
 public:
    oauth2_code_listener(uri listen_uri, oauth2_config& config)
-       : m_listener(new http_listener(listen_uri))
-       , m_config(config)
+      : m_listener(new http_listener(listen_uri))
+      , m_config(config)
    {
       m_listener->support([this](http::http_request request) -> void {
          if (request.request_uri().path() == U("/") && request.request_uri().query() != U(""))
@@ -73,10 +73,10 @@ public:
    ~oauth2_code_listener() { m_listener->close().wait(); }
    pplx::task<bool> listen_for_code() { return pplx::create_task(m_tce); }
 private:
-   std::unique_ptr<http_listener>    m_listener;
+   std::unique_ptr<http_listener> m_listener;
    pplx::task_completion_event<bool> m_tce;
-   oauth2_config&                    m_config;
-   std::mutex                        m_resplock;
+   oauth2_config& m_config;
+   std::mutex m_resplock;
 };
 
 //
@@ -87,9 +87,9 @@ class oauth2_session_sample
 public:
    oauth2_session_sample(utility::string_t name, utility::string_t client_key, utility::string_t client_secret, utility::string_t auth_endpoint, utility::string_t token_endpoint,
                          utility::string_t redirect_uri, utility::string_t scope = "")
-       : m_oauth2_config(client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope)
-       , m_name(name)
-       , m_listener(std::make_unique<oauth2_code_listener>(redirect_uri, m_oauth2_config))
+      : m_oauth2_config(client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope)
+      , m_name(name)
+      , m_listener(std::make_unique<oauth2_code_listener>(redirect_uri, m_oauth2_config))
    {
    }
 
@@ -129,7 +129,7 @@ protected:
    }
 
    http_client_config m_http_config;
-   oauth2_config      m_oauth2_config;
+   oauth2_config m_oauth2_config;
 
 private:
    bool is_enabled() const { return !m_oauth2_config.client_key().empty() && !m_oauth2_config.client_secret().empty(); }
@@ -141,7 +141,7 @@ private:
       open_browser(auth_uri);
    }
 
-   utility::string_t                     m_name;
+   utility::string_t m_name;
    std::unique_ptr<oauth2_code_listener> m_listener;
 };
 
@@ -152,8 +152,8 @@ class youtube_session_sample : public oauth2_session_sample
 {
 public:
    youtube_session_sample()
-       : oauth2_session_sample(U("YouTube"), s_youtube_key, s_youtube_secret, U("https://accounts.google.com/o/oauth2/auth"), U("https://accounts.google.com/o/oauth2/token"),
-                               U("http://localhost:8889/"), U("https://www.googleapis.com/auth/youtube"))
+      : oauth2_session_sample(U("YouTube"), s_youtube_key, s_youtube_secret, U("https://accounts.google.com/o/oauth2/auth"), U("https://accounts.google.com/o/oauth2/token"),
+                              U("http://localhost:8889/"), U("https://www.googleapis.com/auth/youtube"))
    {
       // youtube uses "default" OAuth 2.0 settings.
    }
@@ -169,14 +169,12 @@ protected:
    }
 };
 
+
 int main(int argc, char* argv[]) try
 {
-   std::cout << "Running OAuth 2.0 client sample...\n";
-
-   //   youtube_session_sample youtube;
-   //   youtube.run();
-
-   std::cout << "Done.\n";
+   std::mutex m;
+   std::condition_variable cv;
+   bool quit = false;
 
    utility::string_t listen_uri     = U("http://localhost:8888/");
    utility::string_t name           = U("YouTube");
@@ -187,58 +185,65 @@ int main(int argc, char* argv[]) try
    utility::string_t redirect_uri   = listen_uri + "save_code";
    utility::string_t scope          = U("https://www.googleapis.com/auth/youtube");
 
+   oauth2_config cfg{client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope};
+
    http_listener L(listen_uri);
    L.support(
-       [=](http::http_request request) -> void {
-          if (request.request_uri().path() == "/home")
-          {
-             oauth2_config cfg{client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope};
+      [&quit, &m, &cfg, &cv](http::http_request request) -> void {
+         if (request.request_uri().path() == "/")
+         {
+            auto x = cfg.build_authorization_uri(true);
 
-             auto x = cfg.build_authorization_uri(true);
+            request.reply(status_codes::OK, U(R"(
+                          <html>
+                          <body>
+                             Welcome to YouTube Proxy! <br>
+                             <a href=")" + x + R"(">get_code</a>
+                          </body>
+                          </html>)"),
+                          U("text/html; charset=utf-8"));
+         }
+         else if (request.request_uri().path() == "/load_code")
+         {
+            utility::string_t code;
+            std::ifstream file("code.txt", std::ios::binary);
+            std::ostringstream oss;
+            oss << file.rdbuf();
+            oss.str();
+            request.reply(status_codes::OK, U("old code = " + oss.str() + "\n"));
+         }
+         else if (request.request_uri().path() == "/quit")
+         {
+            std::unique_lock<std::mutex> lk(m);
+            quit = true;
+            cv.notify_all();
 
-             request.reply(status_codes::OK, U(R"(
-                           <html>
-                           <body>
-                              Welcome! <br>
-                              <a href=")" + x + R"(">get_code</a>
-                           </body>
-                           </html>)"),
-                           U("text/html; charset=utf-8"));
-          }
-          if (request.request_uri().path() == "/load_code")
-          {
-             utility::string_t  code;
-             std::ifstream      file("code.txt", std::ios::binary);
-             std::ostringstream oss;
-             oss << file.rdbuf();
-             oss.str();
-             request.reply(status_codes::OK, U("old code = " + oss.str() + "\n"));
-          }
-          if (request.request_uri().path() == "/save_code")
-          {
-             if (request.request_uri().query() != U(""))
-             {
-                auto&& code = request.request_uri().query();
+            request.reply(status_codes::OK, U("stopping."));
+         }
+         else if (request.request_uri().path() == "/save_code")
+         {
+            auto&& code = request.request_uri().query();
 
-                {
-                   std::ofstream file("code.txt", std::ios::binary);
-                   file << code;
-                }
-                request.reply(status_codes::OK, U("code saved"));
-             }
-          }
-          else
-          {
-             std::cout << "not found.\n";
-             request.reply(status_codes::NotFound, U("not found."));
-          }
-       });
+            std::ofstream file("code.txt", std::ios::binary);
+            file << code;
+
+            request.reply(status_codes::OK, U("code saved"));
+         }
+         else
+         {
+            std::cout << "not found.\n";
+            request.reply(status_codes::NotFound, U("not found."));
+         }
+      });
+
+   std::cout << "running HTTP server at uri - " << listen_uri << "\n";
 
    auto&& f = L.open();
 
-   f.wait();
+   f.get();
 
-   open_browser(listen_uri + "home");
+   std::unique_lock<std::mutex> lk(m);
+   cv.wait(lk, [&quit] { return quit; });
 
    return 0;
 }
