@@ -2,6 +2,7 @@
 
 #include "cpprest/http_client.h"
 #include "cpprest/http_listener.h"
+#include <boost/lexical_cast.hpp>
 
 using namespace utility;
 using namespace web;
@@ -170,6 +171,59 @@ protected:
 };
 
 
+struct my_oauth2_params
+{
+   utility::string_t client_key;
+   utility::string_t client_secret;
+   utility::string_t auth_endpoint;
+   utility::string_t token_endpoint;
+   utility::string_t scope;
+};
+
+
+auto&& save_token = [](std::ostream& os, const oauth2_token& tok) {
+   os << tok.access_token() << "\n";
+   os << tok.refresh_token() << "\n";
+   os << tok.token_type() << "\n";
+   os << tok.scope() << "\n";
+   os << tok.expires_in() << "\n";
+};
+
+
+auto&& print_token = [](std::ostream& os, const oauth2_token& tok) {
+   os << "valid = " << tok.is_valid_access_token() << "\n";
+   os << "access_token = " << tok.access_token() << "\n";
+   os << "refresh_token = " << tok.refresh_token() << "\n";
+   os << "token_type = " << tok.token_type() << "\n";
+   os << "scope = " << tok.scope() << "\n";
+   os << "expires_in = " << tok.expires_in() << "\n";
+};
+
+auto&& load_token = [](std::istream& is) {
+   auto&& read_str = [&is]() {
+      utility::string_t str;
+      std::getline(is, str);
+      return str;
+   };
+   auto&& read_int64_t = [&is]() {
+      utility::string_t str;
+      std::getline(is, str);
+      int64_t x;
+      std::istringstream iss(str);
+      iss >> x;
+      return x;
+   };
+
+   oauth2_token tok;
+   tok.set_access_token(read_str());
+   tok.set_refresh_token(read_str());
+   tok.set_token_type(read_str());
+   tok.set_scope(read_str());
+   tok.set_expires_in(read_int64_t());
+
+   return tok;
+};
+
 int main(int argc, char* argv[]) try
 {
    std::mutex m;
@@ -178,20 +232,18 @@ int main(int argc, char* argv[]) try
 
    utility::string_t listen_uri = U("http://localhost:8888/");
 
+   my_oauth2_params params{s_youtube_key, s_youtube_secret, U("https://accounts.google.com/o/oauth2/auth"), U("https://accounts.google.com/o/oauth2/token"),
+                           U("https://www.googleapis.com/auth/youtube")};
+
+   oauth2_config cfg{params.client_key, params.client_secret, params.auth_endpoint, params.token_endpoint, "", params.scope};
+
    http_listener L(listen_uri);
 
    L.support(
-      [&quit, &m, &listen_uri, &cv](http::http_request request) -> void {
+      [&](http::http_request request) -> void {
          if (request.request_uri().path() == "/")
          {
-            utility::string_t client_key     = s_youtube_key;
-            utility::string_t client_secret  = s_youtube_secret;
-            utility::string_t auth_endpoint  = U("https://accounts.google.com/o/oauth2/auth");
-            utility::string_t token_endpoint = U("https://accounts.google.com/o/oauth2/token");
-            utility::string_t redirect_uri   = listen_uri + "save_code";
-            utility::string_t scope          = U("https://www.googleapis.com/auth/youtube");
-
-            oauth2_config cfg{client_key, client_secret, auth_endpoint, token_endpoint, redirect_uri, scope};
+            cfg.set_redirect_uri(listen_uri + "save_token");
 
             auto x = cfg.build_authorization_uri(true);
 
@@ -204,14 +256,15 @@ int main(int argc, char* argv[]) try
                           </html>)"),
                           U("text/html; charset=utf-8"));
          }
-         else if (request.request_uri().path() == "/load_code")
+         else if (request.request_uri().path() == "/load_token")
          {
-            utility::string_t code;
-            std::ifstream file("code.txt", std::ios::binary);
+            std::ifstream file("store.txt", std::ios::binary);
+            oauth2_token tk = load_token(file);
+
             std::ostringstream oss;
-            oss << file.rdbuf();
-            oss.str();
-            request.reply(status_codes::OK, U("old code = " + oss.str() + "\n"));
+            print_token(oss, tk);
+
+            request.reply(status_codes::OK, U("loaded token - " + oss.str()));
          }
          else if (request.request_uri().path() == "/quit")
          {
@@ -221,15 +274,20 @@ int main(int argc, char* argv[]) try
 
             request.reply(status_codes::OK, U("stopping."));
          }
-         else if (request.request_uri().path() == "/save_code")
+         else if (request.request_uri().path() == "/save_token")
          {
-            auto&& code = request.request_uri().query();
+            auto&& f = cfg.token_from_redirected_uri(request.request_uri());
+            f.wait();
 
-            std::ofstream file("code.txt", std::ios::binary);
-            file << code;
+            auto&& tk = cfg.token();
 
-            // FIXME - get access_token code
-            request.reply(status_codes::OK, U("code saved"));
+            std::ofstream file("store.txt", std::ios::binary);
+            save_token(file, tk);
+
+            std::ostringstream oss;
+            print_token(oss, tk);
+
+            request.reply(status_codes::OK, U("saved token\n" + oss.str()));
          }
          else
          {
